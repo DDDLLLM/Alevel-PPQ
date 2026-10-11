@@ -2,7 +2,15 @@ from pathlib import Path
 import json
 import pytest
 from biology.library import Library
-from biology.sources import Client, SourceBlocked, discover_fraft, discover_papersc, discover_html
+from biology.sources import Client, SourceBlocked, discover_fraft, discover_papersc, discover_html, fraft_download_url
+
+
+def test_fraft_current_browser_confirmed_route():
+    assert fraft_download_url('9700_s24_qp_23.pdf') == 'https://cie.fraft.cn/obj/Common/Fetch/redir/9700_s24_qp_23.pdf'
+    with pytest.raises(ValueError):
+        fraft_download_url('../9700_s24_qp_23.pdf')
+    with pytest.raises(ValueError):
+        fraft_download_url('0610_s24_qp_23.pdf')
 
 
 class FakeClient:

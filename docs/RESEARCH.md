@@ -75,3 +75,9 @@ python manage.py sync --source fraft --years 2024:2026 --discover-only --refresh
 PaperSC s20 列表可见 34 份 QP/MS，真实 QP11 https://paper.sc/doc/67f9af86778c77000cf704ca 已由网页工具识别为 20 页 Biology May/June 2020。IGCSE Union Egypt 的 9700 科目根目录公开列出 2016–2023 三个考季；注意 2016/2017 为 Jun/Mar/Nov，2020 夏季目录标签为 May June 2020，2022 春季为 Feb March，不能按固定字符串猜目录。新增 install-2016-2023.sh 按实际公开目录批量同步，不再以 330 文件为目标。云执行器实时检测 Fraft/PaperSC/IGUnion robots 均代理 403，未在本机完成其在线下载验收，现有 PDF 数未增加。
 
 再次检查 Fraft 主站、移动站、robots 和科目接口：网页工具主站超时、移动站 502，执行器代理 403。另一个来源线索域名 cie.fraft.org 网页工具也 502。第三方公开客户端仍表明列表 POST /obj/Fetch/renum、文件 GET /obj/Fetch/redir/{filename}；未能读取下载重定向 Location，不能确认实际存储域名、服务器目录或其完整年份覆盖。
+
+## 用户本机验证的当前 Fraft 下载路径
+
+用户提供公开链接 https://cie.fraft.cn/obj/Common/Fetch/redir/9700_s24_qp_23.pdf 及 Chrome Network 截图，Request Method GET、Status 200、Content-Type application/pdf、Content-Length 1424802；浏览器显示 16 页，封面为 Biology 9700/23 May/June 2024。证据说明本机该下载入口直接返回 PDF，不显示另一个存储地址。旧客户端源码缺少 Common 路径段，已修正本项目下载 URL。不能根据 Server 或 Remote Address 推断真实文件系统路径；截图 Remote Address 不作为源站存储 IP。未读取或复制用户截图中的 Cookie。
+
+文件列表接口的当前 URL、请求方式和字段仍须核实，不能把下载路径中的 Common 自动推断成列表 API 已验证。云端网页工具仍无法读取该 PDF，执行器受网络策略限制，2024 PDF 未计入本地收录。

@@ -14,6 +14,15 @@ from bs4 import BeautifulSoup
 from biology.library import metadata
 
 USER_AGENT = 'Biology9700PersonalLibrary/1.0 (personal educational archive; rate limited)'
+FRAFT_DOWNLOAD_BASE = 'https://cie.fraft.cn/obj/Common/Fetch/redir/'
+
+
+def fraft_download_url(filename):
+    """Current route observed in the user's successful browser PDF response."""
+    metadata(filename)
+    if '/' in filename or '\\' in filename:
+        raise ValueError('Fraft 文件名不能包含目录')
+    return FRAFT_DOWNLOAD_BASE + quote(filename)
 
 
 class SourceBlocked(RuntimeError):
@@ -261,7 +270,7 @@ def discover_fraft(lib,client,years):
                     continue
                 if '/' in name or meta['year']!=year or meta['season']!=letter:
                     raise SourceBlocked('Fraft 文件名或考季异常')
-                add_catalog(lib,'fraft',name,name,'https://cie.fraft.cn/obj/Fetch/redir/'+quote(name),row)
+                add_catalog(lib,'fraft',name,name,fraft_download_url(name),row)
                 count+=1
     return count
 
