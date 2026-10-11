@@ -1,6 +1,6 @@
 # 9700 生物个人题库
 
-> GitHub ZIP 仅含源码。批量同步 2016–2023 各考季请运行 `bash install-2016-2023.sh`；`bash install-papers.sh` 仅安装已验证的旧 330 文件子集。完整范围仍须按同步报告确认，未下载文件不计入题库。
+> GitHub ZIP 仅含源码。批量同步 2016–2023 各考季请运行 `bash install-2016-2023.sh --source fraft`；旧 `bash install-papers.sh` 仅安装 330 文件子集。当前 Fraft 协议已由用户浏览器证据确认，逐年完整范围仍以实际下载报告为准。
 
 这是已经实现、导入真实文件并经过测试的本地网站。界面中文，试卷内容保留英文。仅收录 Cambridge International AS & A Level Biology（9700），年份限制为 2016–2026。
 
@@ -36,8 +36,10 @@ bash install-papers.sh
 330 个文件只是旧历史仓库的子集，不能满足 2016–2023 的完整范围。新的入口会优先检查 Fraft，再检查 PaperSC 和 IGCSE Union Egypt 的公开目录，按来源实际列出的文件批量下载并建立本地索引：
 
 ```bash
-bash install-2016-2023.sh
+bash install-2016-2023.sh --source fraft
 ```
+
+Fraft 当前列表与下载路径、POST 字段以及响应格式已由用户浏览器确认，样本为 2025 冬季 54 文件。`--source fraft` 只访问 Fraft；不加该选项则同时检查其他补充来源。
 
 重新运行会跳过本地已有文件。按年、考季输出目录数、实际收录数、未下载文件和索引未完成数；详细报告在 `data/logs/2016-2023-sync.json`，请求日志在 `data/logs/range-sync.log`。遇到来源拒绝访问不会绕过，也不会宣称已经补齐。
 

@@ -253,7 +253,8 @@ def discover_papersc(lib,client,years):
 
 
 def discover_fraft(lib,client,years):
-    # Research lead: github.com/iewnfod/get_paper_rs. Not asserted to be a stable live API.
+    # URL, form and 54-row schema confirmed by the user's browser on 2026-10-11.
+    # Still validate every response; this is not a promise of stable API coverage.
     count=0
     for year in years:
         for season,letter in [('Mar','m'),('Jun','s'),('Nov','w')]:
@@ -263,6 +264,11 @@ def discover_fraft(lib,client,years):
                 raise SourceBlocked('Fraft 响应与研究线索不符，需重新核查接口')
             if int(data['total'])!=len(data['rows']):
                 raise SourceBlocked('Fraft 返回分页或截断列表；未验证分页协议，停止并保留错误')
+            if any(not isinstance(row,dict) or not isinstance(row.get('file'),str) for row in data['rows']):
+                raise SourceBlocked('Fraft 文件行格式异常')
+            names=[row['file'] for row in data['rows']]
+            if len(set(names))!=len(names):
+                raise SourceBlocked('Fraft 列表包含重复文件；不把重复计数视为完整目录')
             for row in data['rows']:
                 name=row.get('file','')
                 try:

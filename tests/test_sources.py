@@ -41,6 +41,32 @@ def test_fraft_rejects_truncated_listing(tmp_path):
         discover_fraft(Library(tmp_path),FakeClient({'total':2,'rows':[{'file':'9700_m26_qp_12.pdf'}]}),[2026])
 
 
+def test_fraft_user_supplied_54_file_response(tmp_path):
+    # Actual response supplied by the user; catalogue metadata, not PDF fixtures.
+    captured = json.loads((Path(__file__).parent/'fixtures'/'fraft_w25_browser_response.json').read_text())
+    class BrowserResponseClient:
+        def json(self, url, form):
+            assert url == 'https://cie.fraft.cn/obj/Common/Fetch/renum'
+            assert form['subject'] == '9700' and form['year'] == '2025'
+            if form['season'] == 'Nov': return captured
+            return {'total':0,'rows':[],'collection':False}
+    lib = Library(tmp_path)
+    assert discover_fraft(lib, BrowserResponseClient(), [2025]) == 54
+    with lib.connect() as db:
+        names = [r[0] for r in db.execute('SELECT filename FROM catalog')]
+        assert len(names) == len(set(names)) == 54
+        for kind, expected in [('qp',23),('ms',23),('ci',7),('gt',1),('er',0)]:
+            assert sum(f'_{kind}' in name for name in names) == expected
+        assert db.execute('SELECT COUNT(*) FROM documents').fetchone()[0] == 0
+    assert lib.search()['total'] == 0
+
+
+def test_fraft_duplicate_rows_are_not_complete_catalog(tmp_path):
+    rows = [{'file':'9700_m23_qp_12.pdf'}]*2
+    with pytest.raises(SourceBlocked, match='重复'):
+        discover_fraft(Library(tmp_path), FakeClient({'total':2,'rows':rows}), [2023])
+
+
 def test_papersc_rejects_schema_change(tmp_path):
     with pytest.raises(SourceBlocked):discover_papersc(Library(tmp_path),FakeClient({'results':[]}),[2023])
 

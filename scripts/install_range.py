@@ -88,6 +88,9 @@ def main():
     p.add_argument('--years', default='2016:2023')
     p.add_argument('--discover-only', action='store_true')
     p.add_argument('--limit', type=int)
+    p.add_argument('--source', choices=['all','fraft','papersc','igunion'], default='all',
+                   help='指定来源；fraft 为用户浏览器确认过协议的当前接口')
+    p.add_argument('--refresh', action='store_true', help='重新获取列表，不使用已缓存的查询响应')
     args = p.parse_args()
     bounds = args.years.split(':')
     years = list(range(int(bounds[0]), int(bounds[-1])+1))
@@ -99,8 +102,10 @@ def main():
     errors = {}
     clients = {}
     for source, discover in [('fraft', discover_fraft), ('papersc', discover_papersc), ('igunion', discover_union)]:
+        if args.source != 'all' and source != args.source:
+            continue
         print(f'检查来源：{source}', flush=True)
-        clients[source] = Client(lib.home, delay=2)
+        clients[source] = Client(lib.home, delay=2, refresh=args.refresh)
         try:
             discover(lib, clients[source], years)
             record_run(lib, source, 'discovered', '2016–2023 目录发现完成；尚需逐文件下载验证')
@@ -122,6 +127,8 @@ def main():
             if existing and lib.pdf_path(existing).is_file():
                 continue
             source = row['source']
+            if source not in clients:
+                continue
             if source in blocked:
                 continue
             if args.limit is not None and attempted >= args.limit:

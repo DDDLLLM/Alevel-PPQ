@@ -85,3 +85,9 @@ PaperSC s20 列表可见 34 份 QP/MS，真实 QP11 https://paper.sc/doc/67f9af8
 ## 当前 Fraft 列表接口的用户浏览器证据
 
 用户随后提供 URL 和 Chrome Network 截图：POST https://cie.fraft.cn/obj/Common/Fetch/renum，200 OK，Content-Type application/json，请求 Content-Type application/x-www-form-urlencoded。已修正本项目列表 URL。截图选择 9700、2025、冬季，但尚未展示 Payload 或 Response，不能确认实际字段名、查询文件类型、分页方式，以及 total/rows/file 是否仍为当前结构。旧源码中的 subject/year/season 和响应格式继续作为待验证线索，脚本对响应不匹配或截断明确停止。没有因返回 200 就宣称完整批量下载已通过。
+
+## Fraft 请求参数及完整样本响应已由用户提供
+
+用户提供 Payload：subject=9700、year=2025、season=Nov；请求为 form POST /obj/Common/Fetch/renum。完整响应 total=54，rows 实际 54 条，collection=false。23 QP 和 23 MS 的组件均为 11,12,13,14,21,22,23,24,31,33,34,35,36,37,38,41,42,43,44,51,52,53,54；7 CI 为 31,33,34,35,36,37,38；1 GT，未列 ER。lessons 为数组或 false，不参与试卷下载元数据。样本保存在 tests/fixtures/fraft_w25_browser_response.json，只是实际目录响应，不是模拟 PDF 或已收录试卷。
+
+适配器已匹配当前路径、表单字段与响应格式，并新增真实样本解析、重复目录拒绝测试。37 项测试通过。Mac 可运行 bash install-2016-2023.sh --source fraft，查询 2016–2023 三个考季并导入实际下载文件，重复执行跳过本地已有文件。仍须逐年报告确认覆盖，不能由 2025 单一响应推断 2016–2023 已全部存在。开发环境当前 probe 仍被网络策略在 robots 请求阶段代理 403 阻止，未增加本地 PDF 计数。
