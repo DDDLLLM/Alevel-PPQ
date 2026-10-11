@@ -81,3 +81,7 @@ PaperSC s20 列表可见 34 份 QP/MS，真实 QP11 https://paper.sc/doc/67f9af8
 用户提供公开链接 https://cie.fraft.cn/obj/Common/Fetch/redir/9700_s24_qp_23.pdf 及 Chrome Network 截图，Request Method GET、Status 200、Content-Type application/pdf、Content-Length 1424802；浏览器显示 16 页，封面为 Biology 9700/23 May/June 2024。证据说明本机该下载入口直接返回 PDF，不显示另一个存储地址。旧客户端源码缺少 Common 路径段，已修正本项目下载 URL。不能根据 Server 或 Remote Address 推断真实文件系统路径；截图 Remote Address 不作为源站存储 IP。未读取或复制用户截图中的 Cookie。
 
 文件列表接口的当前 URL、请求方式和字段仍须核实，不能把下载路径中的 Common 自动推断成列表 API 已验证。云端网页工具仍无法读取该 PDF，执行器受网络策略限制，2024 PDF 未计入本地收录。
+
+## 当前 Fraft 列表接口的用户浏览器证据
+
+用户随后提供 URL 和 Chrome Network 截图：POST https://cie.fraft.cn/obj/Common/Fetch/renum，200 OK，Content-Type application/json，请求 Content-Type application/x-www-form-urlencoded。已修正本项目列表 URL。截图选择 9700、2025、冬季，但尚未展示 Payload 或 Response，不能确认实际字段名、查询文件类型、分页方式，以及 total/rows/file 是否仍为当前结构。旧源码中的 subject/year/season 和响应格式继续作为待验证线索，脚本对响应不匹配或截断明确停止。没有因返回 200 就宣称完整批量下载已通过。

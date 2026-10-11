@@ -13,6 +13,23 @@ def test_fraft_current_browser_confirmed_route():
         fraft_download_url('0610_s24_qp_23.pdf')
 
 
+def test_fraft_search_uses_current_route_and_validates_catalog(tmp_path):
+    lib = Library(tmp_path)
+    class ListingClient:
+        def __init__(self): self.calls = []
+        def json(self, url, form):
+            self.calls.append((url, form))
+            season = {'Mar':'m', 'Jun':'s', 'Nov':'w'}[form['season']]
+            return {'total': 1, 'rows': [{'file':f'9700_{season}23_qp_12.pdf'}]}
+    client = ListingClient()
+    assert discover_fraft(lib, client, [2023]) == 3
+    assert all(url == 'https://cie.fraft.cn/obj/Common/Fetch/renum' for url, form in client.calls)
+    with lib.connect() as db:
+        row = db.execute("SELECT url FROM catalog WHERE filename='9700_s23_qp_12.pdf'").fetchone()
+        assert row[0] == 'https://cie.fraft.cn/obj/Common/Fetch/redir/9700_s23_qp_12.pdf'
+    assert lib.search()['total'] == 0
+
+
 class FakeClient:
     def __init__(self,data):self.data=data
     def json(self,*args):return self.data

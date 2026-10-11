@@ -15,6 +15,7 @@ from biology.library import metadata
 
 USER_AGENT = 'Biology9700PersonalLibrary/1.0 (personal educational archive; rate limited)'
 FRAFT_DOWNLOAD_BASE = 'https://cie.fraft.cn/obj/Common/Fetch/redir/'
+FRAFT_SEARCH_URL = 'https://cie.fraft.cn/obj/Common/Fetch/renum'
 
 
 def fraft_download_url(filename):
@@ -257,7 +258,7 @@ def discover_fraft(lib,client,years):
     for year in years:
         for season,letter in [('Mar','m'),('Jun','s'),('Nov','w')]:
             form={'subject':'9700','year':str(year),'season':season}
-            data=client.json('https://cie.fraft.cn/obj/Fetch/renum',form)
+            data=client.json(FRAFT_SEARCH_URL,form)
             if not isinstance(data,dict) or not isinstance(data.get('rows'),list) or 'total' not in data:
                 raise SourceBlocked('Fraft 响应与研究线索不符，需重新核查接口')
             if int(data['total'])!=len(data['rows']):
