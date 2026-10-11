@@ -69,3 +69,9 @@ python manage.py sync --source fraft --years 2024:2026 --discover-only --refresh
 ```
 
 探测失败会退出非零并记录 blocked；不会把请求失败当成 0 文件或宣布接口可用。`probe` 成功才说明该次样本协议可用，不意味着永久稳定或全年齐全。
+
+## 2026-10-11 后续核查
+
+PaperSC s20 列表可见 34 份 QP/MS，真实 QP11 https://paper.sc/doc/67f9af86778c77000cf704ca 已由网页工具识别为 20 页 Biology May/June 2020。IGCSE Union Egypt 的 9700 科目根目录公开列出 2016–2023 三个考季；注意 2016/2017 为 Jun/Mar/Nov，2020 夏季目录标签为 May June 2020，2022 春季为 Feb March，不能按固定字符串猜目录。新增 install-2016-2023.sh 按实际公开目录批量同步，不再以 330 文件为目标。云执行器实时检测 Fraft/PaperSC/IGUnion robots 均代理 403，未在本机完成其在线下载验收，现有 PDF 数未增加。
+
+再次检查 Fraft 主站、移动站、robots 和科目接口：网页工具主站超时、移动站 502，执行器代理 403。另一个来源线索域名 cie.fraft.org 网页工具也 502。第三方公开客户端仍表明列表 POST /obj/Fetch/renum、文件 GET /obj/Fetch/redir/{filename}；未能读取下载重定向 Location，不能确认实际存储域名、服务器目录或其完整年份覆盖。
