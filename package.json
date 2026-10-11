@@ -1,0 +1,6 @@
+{
+  "name": "biology-9700-browser-tests",
+  "private": true,
+  "scripts": { "test:browser": "node tests/browser_acceptance.cjs" },
+  "devDependencies": { "playwright": "1.62.1" }
+}

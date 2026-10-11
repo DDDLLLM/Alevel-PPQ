@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "browser": "Chromium",
+  "new_real_pdf_upload": true,
+  "duplicate_import": true,
+  "real_keyword_search": true,
+  "combined_filters": true,
+  "highlight": true,
+  "page6_viewer": true,
+  "mark_scheme_opens": true,
+  "empty_state": true,
+  "year_coverage": true,
+  "mobile_no_overflow": true,
+  "page_errors": []
+}
