@@ -1,6 +1,6 @@
 # 9700 生物个人题库
 
-> GitHub ZIP 仅含源码。批量同步 2016–2023 各考季请运行 `bash install-2016-2023.sh --source fraft`；旧 `bash install-papers.sh` 仅安装 330 文件子集。当前 Fraft 协议已由用户浏览器证据确认，逐年完整范围仍以实际下载报告为准。
+> GitHub ZIP 仅含源码。2016–2023 可运行 `bash install-2016-2023.sh --source fraft`；2022–2026 可用 `python manage.py sync --source fraft --years 2022:2026 --delay 10` 获取来源实际提供的文件。完整覆盖以本地报告为准。
 
 这是已经实现、导入真实文件并经过测试的本地网站。界面中文，试卷内容保留英文。仅收录 Cambridge International AS & A Level Biology（9700），年份限制为 2016–2026。
 
@@ -105,6 +105,10 @@ python scripts/report.py
 python manage.py reindex
 python manage.py reindex --id 5
 python manage.py reindex --id 123 --ocr
+# 只检查 2022–2026 的所有文件，对需要识别的页执行 OCR
+python manage.py reindex --years 2022:2026 --ocr
+# 中断后仅重试未完成文件
+python manage.py reindex --years 2022:2026 --ocr --pending-only
 ```
 
 普通 reindex 保留已经成功的 OCR 文字以及人工修正。`--ocr` 要求系统安装 **Tesseract + eng 语言包**。Ubuntu/Debian：`sudo apt install tesseract-ocr tesseract-ocr-eng`；macOS：`brew install tesseract`。Windows 安装 Tesseract 后，将 `TESSDATA_PREFIX` 指向含 `eng.traineddata` 的 tessdata 目录。缺少 OCR 引擎时会明确记录错误，不声称成功。

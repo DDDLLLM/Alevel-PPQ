@@ -28,6 +28,8 @@ def main(argv=None):
     imp.add_argument('path');imp.add_argument('--source',default='local');imp.add_argument('--source-url',default='')
     idx=sub.add_parser('reindex',help='重建索引（保留人工目录）')
     idx.add_argument('--id',type=int);idx.add_argument('--ocr',action='store_true',help='需要系统已安装 Tesseract + eng 语言包')
+    idx.add_argument('--years',type=years,help='仅处理指定年份，例如 2022:2026')
+    idx.add_argument('--pending-only',action='store_true',help='仅处理尚未完成索引的文件，方便中断后继续')
     sub.add_parser('coverage',help='输出每年实际覆盖与待处理文件')
     sync=sub.add_parser('sync',help='联网发现并导入；实时校验源码线索接口')
     sync.add_argument('--source',choices=['papersc','fraft'],required=True)
@@ -62,12 +64,27 @@ def main(argv=None):
         logging.info('已处理 %d，失败 %d',len(files),failed)
     elif args.command=='reindex':
         with lib.connect() as db:
-            ids=[args.id] if args.id else [r[0] for r in db.execute('SELECT id FROM documents')]
+            clauses=[];params=[]
+            if args.id is not None:
+                clauses.append('id=?');params.append(args.id)
+            if args.years:
+                clauses.append('year IN ('+','.join('?' for _ in args.years)+')');params.extend(args.years)
+            if args.pending_only:
+                clauses.append("status!='ready'")
+            query='SELECT id,filename FROM documents'+(' WHERE '+' AND '.join(clauses) if clauses else '')+' ORDER BY year,season,filename'
+            selected=db.execute(query,params).fetchall()
+        logging.info('本次检查 %d 个文件；有文字页面保留原文，需要识别的页面执行 OCR',len(selected))
+        ids=[r['id'] for r in selected]
+        names={r['id']:r['filename'] for r in selected}
         for doc_id in ids:
             try:
-                lib.index_document(doc_id,ocr=args.ocr);logging.info('REINDEX %s',doc_id)
+                logging.info('处理 %s',names[doc_id])
+                lib.index_document(doc_id,ocr=args.ocr)
+                doc=lib.document(doc_id)
+                logging.info('REINDEX %s %s %s/%s 页可检索',names[doc_id],doc['status'],doc['searchable_pages'],doc['page_count'])
             except Exception as exc:
                 failed+=1;logging.error('REINDEX %s: %s',doc_id,exc)
+        logging.info('批处理结束：检查 %d 文件，执行失败 %d；ready 才代表本次索引完成，partial/needs_ocr 仍需处理',len(ids),failed)
     elif args.command=='coverage':
         with lib.connect() as db:
             unfinished=[dict(r) for r in db.execute("SELECT filename,status,error FROM documents WHERE status!='ready'")]
