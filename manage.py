@@ -31,6 +31,10 @@ def main(argv=None):
     idx.add_argument('--years',type=years,help='仅处理指定年份，例如 2022:2026')
     idx.add_argument('--pending-only',action='store_true',help='仅处理尚未完成索引的文件，方便中断后继续')
     sub.add_parser('coverage',help='输出每年实际覆盖与待处理文件')
+    reader=sub.add_parser('prepare-reader',help='缓存阅读文字坐标与 MS 目录，不修改原索引或 PDF')
+    reader.add_argument('--years',type=years,help='例如 2022:2026')
+    reader.add_argument('--id',type=int,help='仅处理一个文件')
+    reader.add_argument('--ocr',action='store_true',help='仅为缺少坐标的 OCR 页面补齐坐标')
     sync=sub.add_parser('sync',help='联网发现并导入；实时校验源码线索接口')
     sync.add_argument('--source',choices=['papersc','fraft'],required=True)
     sync.add_argument('--years',type=years,default=years('2016:2026'))
@@ -85,6 +89,28 @@ def main(argv=None):
             except Exception as exc:
                 failed+=1;logging.error('REINDEX %s: %s',doc_id,exc)
         logging.info('批处理结束：检查 %d 文件，执行失败 %d；ready 才代表本次索引完成，partial/needs_ocr 仍需处理',len(ids),failed)
+    elif args.command=='prepare-reader':
+        from biology.reader import Reader
+        reader=Reader(lib)
+        with lib.connect() as db:
+            docs=[dict(r) for r in db.execute('SELECT * FROM documents ORDER BY year,filename')]
+        docs=[d for d in docs if (not args.years or d['year'] in args.years) and (args.id is None or d['id']==args.id)]
+        pending=0
+        for doc in docs:
+            try:
+                for number in range(1,doc['page_count']+1):
+                    layout=reader.layout(doc['id'],number)
+                    if layout['needs_coordinates'] and args.ocr:
+                        logging.info('仅补齐坐标 %s PDF 第 %d 页',doc['filename'],number)
+                        layout=reader.layout(doc['id'],number,repair=True)
+                    pending+=int(layout['needs_coordinates'])
+                if doc['kind']=='ms':
+                    result=reader.directory(doc['id'],refresh=True)
+                    logging.info('MS %s 自动目录 %d 个题号（含主问题汇总）',doc['filename'],len(result['entries']))
+                logging.info('READER %s 完成缓存检查',doc['filename'])
+            except Exception as exc:
+                failed+=1;logging.error('READER %s: %s',doc['filename'],exc)
+        logging.info('处理 %d 文件；执行失败 %d；仍缺坐标 %d 页；原 PDF、OCR、索引和人工修正未改动',len(docs),failed,pending)
     elif args.command=='coverage':
         with lib.connect() as db:
             unfinished=[dict(r) for r in db.execute("SELECT filename,status,error FROM documents WHERE status!='ready'")]

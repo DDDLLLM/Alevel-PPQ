@@ -43,6 +43,8 @@ class Library:
         for folder in ('pdfs', 'cache', 'logs', 'quarantine'):
             (self.home / folder).mkdir(parents=True, exist_ok=True)
         self.db_path = self.home / 'library.sqlite3'
+        from biology.reader import migrate
+        migrate(self.db_path)
         with self.connect() as db:
             db.executescript('''
             PRAGMA journal_mode=WAL;
@@ -78,7 +80,6 @@ class Library:
               details TEXT, checked_at TEXT DEFAULT CURRENT_TIMESTAMP);
             CREATE INDEX IF NOT EXISTS doc_filters ON documents(year,season,paper,variant,kind);
             CREATE INDEX IF NOT EXISTS unit_doc ON units(doc_id);
-            PRAGMA user_version=1;
             ''')
 
     def connect(self):
@@ -326,6 +327,12 @@ class Library:
             if filters.get(k) not in (None, ''):
                 where.append('d.' + k + '=?')
                 args.append(filters[k])
+        if filters.get('component') not in (None, ''):
+            component = str(filters['component'])
+            if not re.fullmatch(r'[1-5][0-9]', component):
+                raise ValueError('组件编号应为两位，例如 21、23 或 38')
+            where.append('(d.paper*10+d.variant)=?')
+            args.append(int(component))
         query = query.strip()
         tokens = re.findall(r"[A-Za-z0-9]+", query)
         if query and not tokens:

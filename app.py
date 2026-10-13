@@ -8,6 +8,7 @@ from pathlib import Path
 import fitz
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, session, url_for
 from biology.library import Library, SEASONS, TYPES, STATUSES
+from biology.reader import Reader
 
 
 def create_app(data_dir=None):
@@ -16,6 +17,7 @@ def create_app(data_dir=None):
                       SESSION_COOKIE_SAMESITE='Strict', TRUSTED_HOSTS=['localhost','127.0.0.1','[::1]'])
     lib = Library(data_dir)
     app.config['LIBRARY'] = lib
+    reader = Reader(lib)
 
     @app.before_request
     def csrf():
@@ -51,7 +53,9 @@ def create_app(data_dir=None):
 
     @app.get('/')
     def index():
-        filters = {k:request.args.get(k,'qp' if k=='kind' else '') for k in ('year','season','paper','variant','kind','status')}
+        filters = {k:request.args.get(k,'qp' if k=='kind' else '') for k in ('year','season','paper','variant','component','kind','status')}
+        if not filters['component'] and filters['paper'] and filters['variant']:
+            filters['component'] = filters['paper'] + filters['variant']
         q = request.args.get('q','')
         data = lib.search(q,filters,request.args.get('page',1),phrase=request.args.get('mode')=='phrase')
         coverage = lib.coverage()
@@ -59,8 +63,16 @@ def create_app(data_dir=None):
             params = request.args.to_dict()
             params['page'] = n
             return url_for('index',**params)
+        def filter_url(**changes):
+            params = dict(filters, q=q, mode=request.args.get('mode','words'))
+            params.update(changes)
+            if 'component' in changes:
+                params.pop('paper',None); params.pop('variant',None)
+            return url_for('index', **{k:v for k,v in params.items() if v or k=='kind'})
+        with lib.connect() as db:
+            components = [str(r[0]) for r in db.execute('SELECT DISTINCT paper*10+variant FROM documents WHERE paper>0 ORDER BY 1')]
         return render_template('index.html', result=data, q=q, filters=filters,
-            mode=request.args.get('mode','words'), page_url=page_url,
+            mode=request.args.get('mode','words'), page_url=page_url, filter_url=filter_url, years=coverage, components=components,
             total_files=sum(r['files'] for r in coverage), total_qp=sum(r['qp'] for r in coverage),
             total_pages=sum(r['searchable_pages'] for r in coverage))
 
@@ -151,7 +163,54 @@ def create_app(data_dir=None):
         page = int(request.args.get('page',1))
         if not 1 <= page <= doc['page_count']:
             abort(404)
-        return render_template('viewer.html',doc=doc,page=page,related=lib.related(doc))
+        ms = next((r for r in lib.related(doc) if r['kind']=='ms'),None) if doc['kind']=='qp' else None
+        with lib.connect() as db:
+            questions = [dict(r) for r in db.execute('SELECT label,page_start,page_end,confidence FROM units WHERE doc_id=? AND label IS NOT NULL ORDER BY page_start,id',(doc_id,))]
+        config = dict(doc=doc,ms=ms,page=page,explicit_page='page' in request.args,
+                      question=request.args.get('question',''),focus=request.args.get('focus','question'),
+                      query=request.args.get('q',''),questions=questions)
+        return render_template('viewer.html',doc=doc,page=page,related=lib.related(doc),config=config)
+
+    @app.get('/api/reader/<int:doc_id>/page/<int:number>')
+    def page_layout(doc_id,number):
+        return jsonify(reader.layout(doc_id,number))
+
+    @app.post('/api/reader/<int:doc_id>/page/<int:number>/coordinates')
+    def page_coordinates(doc_id,number):
+        return jsonify(reader.layout(doc_id,number,repair=True))
+
+    @app.get('/api/reader/<int:doc_id>/answer')
+    def answer_location(doc_id):
+        return jsonify(reader.resolve(doc_id,request.args.get('question','')))
+
+    @app.post('/api/reader/<int:doc_id>/answer')
+    def save_answer(doc_id):
+        payload=request.get_json(silent=True)
+        if not isinstance(payload,dict) or not all(k in payload for k in ('ms_doc_id','label','ranges')):
+            raise ValueError('缺少题号、评分标准或答案范围')
+        return jsonify(reader.save_link(doc_id,payload))
+
+    @app.post('/api/reader/<int:doc_id>/answer/reset')
+    def reset_answer(doc_id):
+        from biology.reader import label
+        lib.document(doc_id)
+        k=label((request.get_json(silent=True) or {}).get('label',''))
+        with lib.connect() as db:
+            db.execute('DELETE FROM answer_links WHERE qp_doc_id=? AND label=?',(doc_id,k))
+        return jsonify(reader.resolve(doc_id,k))
+
+    @app.get('/api/reader/<int:doc_id>/question')
+    def question_text(doc_id):
+        lib.document(doc_id)
+        return jsonify(reader.question(doc_id,request.args.get('question','')))
+
+    @app.get('/api/reader/<int:doc_id>/directory')
+    def answer_directory(doc_id):
+        return jsonify(reader.directory(doc_id))
+
+    @app.get('/api/reader/<int:doc_id>/find')
+    def find_in_doc(doc_id):
+        return jsonify(items=reader.find(doc_id,request.args.get('q','')))
 
     @app.get('/page/<int:doc_id>/<int:number>.png')
     def page_image(doc_id,number):

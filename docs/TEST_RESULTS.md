@@ -1,4 +1,6 @@
-# 实际验收结果
+# 历史验收结果
+
+当前阅读器升级的验收见 [READER-TESTS.md](READER-TESTS.md)。以下为 2026-10-10 初版的历史记录，不能视为用户电脑目前的覆盖情况。
 
 日期：2026-10-10。环境：Linux、Python 3.12、SQLite FTS5、PyMuPDF 1.26.5、系统 Chromium、Tesseract 5 eng。
 

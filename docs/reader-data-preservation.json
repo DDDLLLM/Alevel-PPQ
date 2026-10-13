@@ -1,0 +1,25 @@
+{
+  "documents": {
+    "rows": 330,
+    "unchanged": true
+  },
+  "pages": {
+    "rows": 4125,
+    "unchanged": true
+  },
+  "units": {
+    "rows": 3424,
+    "unchanged": true
+  },
+  "corrections": {
+    "rows": 1,
+    "unchanged": true
+  },
+  "sources": {
+    "rows": 330,
+    "unchanged": true
+  },
+  "sqlite_integrity": "ok",
+  "pdf_hashes_verified": 330,
+  "fts_integrity": "ok"
+}

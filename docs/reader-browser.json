@@ -1,0 +1,41 @@
+{
+  "real_search": {
+    "filename": "9700_s19_qp_21.pdf",
+    "label": "1",
+    "page": 3
+  },
+  "result_copy_buttons": true,
+  "native_selection": {
+    "selected": "hybridoma ",
+    "copied": "hybridoma "
+  },
+  "ms_selection": {
+    "selected": "secondary ",
+    "copied": "secondary "
+  },
+  "cross_page_answer": {
+    "pages": [
+      5,
+      6
+    ],
+    "includes_subquestion": true
+  },
+  "subquestion": {
+    "label": "1(b)(iii)",
+    "qpPage": 4,
+    "msPage": 6
+  },
+  "independent_reading_position": true,
+  "honest_fallback": true,
+  "manual_ui_save": true,
+  "single_page_coordinate_repair": true,
+  "ocr_selection": {
+    "selected": "Explain ",
+    "copied": "Explain "
+  },
+  "button_combination": true,
+  "details_copy_text": true,
+  "mobile_no_overflow": true,
+  "js_errors": [],
+  "status": "PASS"
+}
