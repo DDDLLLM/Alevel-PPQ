@@ -1,4 +1,4 @@
-import { parseQuery, stem } from './search-core.mjs';
+import { parseQuery, stem, inScope } from './search-core.mjs';
 const $ = selector => document.querySelector(selector);
 const S = { m: '2–3 月', s: '5–6 月', w: '10–11 月', y: '样卷' };
 const K = { qp: '试题', ms: '评分标准', er: '考官报告', gt: '等级分界', ci: '实验说明', ir: '实验说明', in: '附页', sp: '样卷', sm: '样卷评分标准' };
@@ -11,7 +11,7 @@ state.phrase = params.get('phrase') === '1';
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
 function toast(text) { $('#toast').textContent = text; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').hidden = true, 3500); }
 function safePDF(doc) { return new URL(doc.pdf, base).href; }
-async function getJSON(path) { const r = await fetch(new URL(path, base)); if (!r.ok) throw Error('题库资料暂时无法加载，请稍后重试。'); return r.json(); }
+async function getJSON(path) { const r = await fetch(new URL(path, base), { cache: 'no-cache' }); if (!r.ok) throw Error('题库资料暂时无法加载，请稍后重试。'); return r.json(); }
 function urlFor(reader) { const p = new URLSearchParams(); for (const k of ['q', ...FILTERS, 'sort']) if (state[k] || k === 'kind') p.set(k, state[k]); if (state.phrase) p.set('phrase', '1'); if (reader) { p.set('doc', reader.doc.id); p.set('page', reader.page || 1); if (reader.answer) p.set('answer', '1'); if (reader.answerLabel) p.set('question', reader.answerLabel); } return location.pathname + (p.size ? '?' + p : ''); }
 function updateURL(reader) { history.replaceState(null, '', urlFor(reader)); }
 const definitions = () => [
@@ -79,7 +79,7 @@ function renderMore() {
   }
   visible = end; $('#more-results').hidden = visible >= results.length; $('#result-end').hidden = visible < results.length || !results.length;
 }
-function showEmpty() { const box = el('div', 'empty'); box.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="17" cy="17" r="10"/><path d="m25 25 8 8"/></svg>'; box.append(el('h3', '', '这里暂时没有匹配的内容'), el('p', '', '试试更短的英文关键词，或放宽年份与 Paper 筛选。当前题库实际收录 2020–2026 年资料，部分待 OCR 页面不能全文搜索。')); const reset = el('button', '', '清空搜索与筛选'); reset.onclick = resetAll; box.append(reset); $('#results').append(box); }
+function showEmpty() { const box = el('div', 'empty'); box.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="17" cy="17" r="10"/><path d="m25 25 8 8"/></svg>'; box.append(el('h3', '', '这里暂时没有匹配的内容'), el('p', '', '试试更短的英文关键词，或放宽年份与 Paper 筛选。当前题库实际收录 2022–2026 年资料，部分待 OCR 页面不能全文搜索。')); const reset = el('button', '', '清空搜索与筛选'); reset.onclick = resetAll; box.append(reset); $('#results').append(box); }
 function resetAll() { for (const k of ['q', ...FILTERS]) state[k] = k === 'kind' ? 'qp' : ''; $('#search').value = ''; $('#phrase').checked = false; runSearch(); }
 function showInfo(title, content) { $('#info-title').textContent = title; $('#info-content').replaceChildren(content); $('#info-dialog').showModal(); }
 function showCoverage() {
@@ -181,7 +181,7 @@ document.addEventListener('keydown', e => { if (e.key === '/' && !/INPUT|TEXTARE
 $('#search').value = state.q; $('#phrase').checked = state.phrase; $('#sort').value = state.sort;
 async function boot() {
   try {
-    [manifest, docs] = await Promise.all([getJSON('manifest.json'), getJSON('catalog.json')]); byId = new Map(docs.map(d => [d.id, d]));
+    [manifest, docs] = await Promise.all([getJSON('manifest.json'), getJSON('catalog.json')]); docs = docs.filter(inScope); manifest.years = manifest.years.filter(y => inScope(y)); manifest.stats = { ...manifest.stats, files: docs.length, papers: docs.filter(d => d.kind === 'qp').length, pages: docs.reduce((n, d) => n + d.page_count, 0), partial: docs.filter(d => d.status !== 'ready').length }; byId = new Map(docs.map(d => [d.id, d]));
     $('#stat-papers').textContent = manifest.stats.papers; $('#stat-years').textContent = manifest.years.length; $('#sidebar-range').textContent = `${Math.min(...manifest.years.map(y => y.year))}–${Math.max(...manifest.years.map(y => y.year))} · ${manifest.stats.files} 个文件`;
     worker = new Worker(new URL('./search-worker.js', import.meta.url), { type: 'module' });
     worker.onmessage = e => { const m = e.data; if (m.id !== requestId) return; if (m.type === 'progress') { $('#load-status').textContent = m.text; return; } $('#load-status').setAttribute('aria-busy', 'false'); if (m.type === 'error') { $('#load-status').textContent = m.message; return; } if (m.type !== 'results') return; results = m.results; visible = 0; queryText = m.text; $('#results').replaceChildren(); $('#results-title').firstChild.textContent = queryText ? '搜索结果 ' : '浏览试卷 '; $('#result-eyebrow').textContent = queryText ? 'SEARCH THE LIBRARY' : 'THE PAPER LIBRARY'; $('#result-count').textContent = String(m.total); $('#load-status').textContent = m.total > results.length ? `找到 ${m.total} 个页面，显示前 ${results.length} 个结果。可以进一步筛选。` : ''; renderChips(m.filters); renderMore(); if (!m.total) showEmpty(); };

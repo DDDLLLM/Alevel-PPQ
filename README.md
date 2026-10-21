@@ -1,6 +1,6 @@
 # 9700 生物个人题库
 
-> **学生在线版已新增**：打开 [9700 Biology 学生题库](https://biology-9700-library.divinehorse1.chatgpt.site)。学生无需登录或安装软件。公开资料位于 `student-data/`，由 GitHub Pages 提供；更新流程见 [学生版维护说明](student-site/README.md)。本次公开资料为 2020–2026 年的 651 个文件、273 份试卷，收录完整性与 OCR 状态以在线页面为准。
+> **学生在线版已新增**：打开 [9700 Biology 学生题库](https://biology-9700-library.divinehorse1.chatgpt.site)。学生无需登录或安装软件。公开资料位于 `student-data/`，由 GitHub Pages 提供；更新流程见 [学生版维护说明](student-site/README.md)。本次公开资料为 2022–2026 年的 468 个文件、195 份试卷，收录完整性与 OCR 状态以在线页面为准。
 >
 > 下文保留原本地版的运行说明；其中“GitHub 仅含源码、不含 PDF”描述的是新增学生版之前的版本。现在仅 `data/` 中的老师数据库、缓存和备份继续留在本机。
 

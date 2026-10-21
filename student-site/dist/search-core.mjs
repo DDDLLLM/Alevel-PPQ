@@ -1,3 +1,5 @@
+export const YEAR_MIN = 2022, YEAR_MAX = 2026;
+export const inScope = doc => Number(doc.year) >= YEAR_MIN && Number(doc.year) <= YEAR_MAX;
 export function parseQuery(raw, filters = {}) {
   const next = { ...filters };
   let text = String(raw || '').trim().toLowerCase();
@@ -19,7 +21,7 @@ export function parseQuery(raw, filters = {}) {
   return { text: text.trim(), filters: next };
 }
 export function matchesDocument(doc, filters) {
-  return ['year', 'season', 'paper', 'kind'].every(k => !filters[k] || String(doc[k]) === String(filters[k])) && (!filters.variant || String(filters.variant).split(',').includes(String(doc.variant)));
+  return inScope(doc) && ['year', 'season', 'paper', 'kind'].every(k => !filters[k] || String(doc[k]) === String(filters[k])) && (!filters.variant || String(filters.variant).split(',').includes(String(doc.variant)));
 }
 export function stem(word) {
   if (word.length > 4 && word.endsWith('ies')) return word.slice(0, -3) + 'y';
@@ -48,4 +50,25 @@ export function matchText(text, query, phrase = false) {
   if (at === -1) return null;
   const start = Math.max(0, at - 90);
   return { score, snippet: (start ? '…' : '') + text.slice(start, at + 280).replace(/\s+/g, ' ').trim() + (at + 280 < text.length ? '…' : '') };
+}
+
+// Build postings once when a shard loads; later queries inspect matching pages only.
+export function prepareIndex(rows) {
+  const postings = new Map();
+  rows.forEach((row, index) => {
+    if (!row[2] || !['text', 'ocr'].includes(row[3])) return;
+    const terms = new Set((row[2].toLowerCase().match(/[a-z0-9]+/g) || []).map(stem));
+    for (const term of terms) {
+      if (!postings.has(term)) postings.set(term, new Set());
+      postings.get(term).add(index);
+    }
+  });
+  return { rows, postings };
+}
+export function candidatePages(index, query) {
+  const terms = [...new Set((query.toLowerCase().match(/[a-z0-9]+/g) || []).map(stem))];
+  const lists = terms.map(t => index.postings.get(t));
+  if (!terms.length || lists.some(s => !s)) return [];
+  lists.sort((a, b) => a.size - b.size);
+  return [...lists[0]].filter(i => lists.every(s => s.has(i))).map(i => index.rows[i]);
 }

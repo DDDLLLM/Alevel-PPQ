@@ -2,6 +2,7 @@
 """Export a read-only student library without modifying the teacher database."""
 import argparse
 import hashlib
+import gzip
 import json
 import shutil
 import sqlite3
@@ -10,6 +11,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+YEAR_MIN, YEAR_MAX = 2022, 2026
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
@@ -19,6 +21,32 @@ def write_json(path, value):
     payload = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
     path.write_bytes(payload)
     return {'path': path.name, 'bytes': len(payload), 'sha256': hashlib.sha256(payload).hexdigest()}
+
+
+def write_search_year(output, year, rows, docs):
+    info = write_json(output / 'index' / f'{year}.json', rows)
+    info['path'] = 'index/' + info['path']
+    info['shards'] = {}
+    by_id = {d['id']: d for d in docs}
+    for kind in sorted({d['kind'] for d in docs if d['year'] == year}):
+        selected = [r for r in rows if by_id[r[0]]['kind'] == kind and r[3] in ('text', 'ocr') and r[2]]
+        payload = json.dumps(selected, ensure_ascii=False, separators=(',', ':')).encode()
+        compressed = gzip.compress(payload, compresslevel=6, mtime=0)
+        digest = hashlib.sha256(compressed).hexdigest()
+        path = f'index/{year}/{kind}-{digest[:12]}.json.gz'
+        target = output / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(compressed)
+        info['shards'][kind] = dict(path=path, bytes=len(compressed), raw_bytes=len(payload), sha256=digest)
+    info.update(year=year, files=sum(d['year'] == year for d in docs), papers=sum(d['year'] == year and d['kind'] == 'qp' for d in docs), pages=len(rows))
+    return info
+
+
+def remove_old_indexes(output):
+    # Old PDFs may remain as an archive; no old index can enter active search.
+    for year in (2020, 2021):
+        (output / 'index' / f'{year}.json').unlink(missing_ok=True)
+
 
 
 def export(data, output, directories=True):
@@ -31,7 +59,7 @@ def export(data, output, directories=True):
         db = sqlite3.connect(snapshot)
         db.row_factory = sqlite3.Row
         columns = 'id,filename,sha256,year,season,kind,paper,variant,page_count,searchable_pages,status'
-        docs = [dict(r) for r in db.execute(f'SELECT {columns} FROM documents ORDER BY year DESC,season,paper,variant,kind')]
+        docs = [dict(r) for r in db.execute(f'SELECT {columns} FROM documents WHERE year BETWEEN {YEAR_MIN} AND {YEAR_MAX} ORDER BY year DESC,season,paper,variant,kind')]
         for doc in docs:
             src = data / 'pdfs' / (doc['sha256'] + '.pdf')
             if not src.is_file():
@@ -49,9 +77,7 @@ def export(data, output, directories=True):
         years = []
         for year in sorted({d['year'] for d in docs}, reverse=True):
             rows = [[r['doc_id'], r['page'], r['text'], r['status']] for r in db.execute('SELECT p.doc_id,p.page,p.text,p.status FROM pages p JOIN documents d ON d.id=p.doc_id WHERE d.year=? ORDER BY p.doc_id,p.page', (year,))]
-            info = write_json(output / 'index' / f'{year}.json', rows)
-            info['path'] = 'index/' + info['path']
-            info.update(year=year, files=sum(d['year'] == year for d in docs), papers=sum(d['year'] == year and d['kind'] == 'qp' for d in docs), pages=len(rows))
+            info = write_search_year(output, year, rows, docs)
             years.append(info)
         # Reuse the existing conservative MS recognizer on a temporary database only.
         answer_map = {}
@@ -75,7 +101,9 @@ def export(data, output, directories=True):
         write_json(output / 'answers.json', answer_map)
         write_json(output / 'catalog.json', docs)
         stats = dict(files=len(docs), papers=sum(d['kind'] == 'qp' for d in docs), pages=sum(d['page_count'] for d in docs), partial=sum(d['status'] != 'ready' for d in docs), pdf_bytes=sum(d['bytes'] for d in docs), answer_directories=len(answer_map))
-        manifest = dict(schema=1, subject='9700', title='Cambridge International AS & A Level Biology', generated_at=datetime.now(timezone.utc).isoformat(), years=years, stats=stats)
+        manifest = dict(schema=2, subject='9700', title='Cambridge International AS & A Level Biology', generated_at=datetime.now(timezone.utc).isoformat(), years=years, stats=stats)
+        manifest['year_range'] = [YEAR_MIN, YEAR_MAX]
+        remove_old_indexes(output)
         write_json(output / 'manifest.json', manifest)
         (output / '.nojekyll').touch()
         (output / 'index.html').write_text('<!doctype html><meta charset="utf-8"><title>9700 Biology library data</title><p>9700 Biology · student library files</p>', encoding='utf-8')
